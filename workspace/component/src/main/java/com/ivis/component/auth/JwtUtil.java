@@ -15,11 +15,11 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    // Must be at least 256 bits (32 chars) for HS256
+    // HS256の場合、少なくとも256ビット（32文字）が必要
     private static final String SECRET = "ivis-chatbot-secure-secret-key-do-not-leak-this-key-123456";
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
     
-    // 24 hours
+    // 24時間
     private static final long EXPIRATION_TIME = 86400000; 
 
     public String generateToken(String username) {

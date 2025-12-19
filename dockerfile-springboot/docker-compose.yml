@@ -124,7 +124,8 @@ services:
       - ivis-net
     restart: always
     volumes:
-      - ../workspace:/workspace:rw
+      - ../workspace:/home/vscode/workspace:rw
+    command: sh -c "mvn clean install -DskipTests && mvn spring-boot:run -pl ojt-ai-boot"
 
 networks:
   ivis-net:

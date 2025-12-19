@@ -16,25 +16,25 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, JwtWebFilter jwtWebFilter) {
         return http
-            // 1. Disable CSRF (because we use JWT, not Session Cookies)
+            // 1. CSRFを無効化（セッションCookieではなくJWTを使用するため）
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             
-            // 2. Disable Form Login (the ugly page) & HTTP Basic
+            // 2. フォームログイン（デフォルトのページ）とHTTP Basic認証を無効化
             .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
             .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
 
-            // 3. Stateless Session (No HttpSession)
+            // 3. ステートレスセッション（HttpSessionなし）
             .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
 
-            // 4. Authorize Rules
+            // 4. 認可ルール
             .authorizeExchange(exchanges -> exchanges
-                // Public endpoints (Login, Swagger, Config, etc.)
-                .pathMatchers("/api/hello", "/api/auth/**", "/api/public/**", "/login").permitAll()
-                // All other endpoints need authentication
+                // 公開エンドポイント（ログイン、Swagger、設定など）
+                .pathMatchers("/api/auth/**", "/api/public/**", "/login").permitAll()
+                // その他のすべてのエンドポイントは認証が必要
                 .anyExchange().authenticated()
             )
 
-            // 5. Add JWT Filter before Authentication
+            // 5. 認証の前にJWTフィルターを追加
             .addFilterAt(jwtWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
             
             .build();

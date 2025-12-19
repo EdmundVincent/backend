@@ -1,6 +1,7 @@
 package com.ivis.starter.filter;
 
 import com.ivis.component.auth.JwtUtil;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,9 +18,11 @@ import java.util.Collections;
 public class JwtWebFilter implements WebFilter {
 
     private final JwtUtil jwtUtil;
+    private final ReactiveStringRedisTemplate redisTemplate;
 
-    public JwtWebFilter(JwtUtil jwtUtil) {
+    public JwtWebFilter(JwtUtil jwtUtil, ReactiveStringRedisTemplate redisTemplate) {
         this.jwtUtil = jwtUtil;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -32,14 +35,20 @@ public class JwtWebFilter implements WebFilter {
             try {
                 String username = jwtUtil.extractUsername(token);
                 if (username != null && jwtUtil.validateToken(token, username)) {
-                    UsernamePasswordAuthenticationToken auth = 
-                        new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
-                    
-                    return chain.filter(exchange)
-                            .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
+                    // Redisでトークンの有効性を確認
+                    String redisKey = "auth:token:" + username;
+                    return redisTemplate.opsForValue().get(redisKey)
+                            .filter(storedToken -> storedToken.equals(token))
+                            .flatMap(storedToken -> {
+                                UsernamePasswordAuthenticationToken auth = 
+                                    new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+                                return chain.filter(exchange)
+                                        .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
+                            })
+                            .switchIfEmpty(chain.filter(exchange)); // トークンがRedisに存在しないか、不一致
                 }
             } catch (Exception e) {
-                // Token invalid, ignore and let Security handle it (401)
+                // トークンが無効な場合、無視してSecurityに処理させる（401）
             }
         }
         return chain.filter(exchange);

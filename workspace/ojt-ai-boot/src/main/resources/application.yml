@@ -10,6 +10,14 @@ spring:
     redis:
       host: ivis-redis
       port: 6379
+  kafka:
+    bootstrap-servers: kafka:29092
+    consumer:
+      group-id: ojt-ai-group
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 logging:
   level:
