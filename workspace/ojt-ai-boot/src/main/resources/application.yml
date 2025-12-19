@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ojt-ai-backend
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      host: ivis-redis
+      port: 6379
+
+logging:
+  level:
+    root: INFO
+    com.ivis: DEBUG

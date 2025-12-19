@@ -1,0 +1,40 @@
+{
+    "name": "ivis-ai-translator",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "rag-api",
+    "workspaceFolder": "/workspace",
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.extension-pack-java",
+                "vscjava.vscode-spring-boot-dashboard",
+                "vscjava.vscode-maven",
+                "eamodio.gitlens",
+                "ms-azuretools.vscode-docker"
+            ],
+            "settings": {
+                "java.server.launchMode": "Standard",
+                "[java]": {
+                    "editor.defaultFormatter": "redhat.java",
+                    "editor.formatOnSave": true
+                },
+                "editor.fontSize": 13,
+                "editor.wordWrap": "on"
+            }
+        }
+    },
+    "forwardPorts": [
+        8080
+    ],
+    "portsAttributes": {
+        "8080": {
+            "label": "Application",
+            "onAutoForward": "notify"
+        }
+    },
+    "postCreateCommand": "echo 'Development environment ready!'",
+    "remoteUser": "vscode"
+}

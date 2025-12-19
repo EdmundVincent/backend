@@ -1,0 +1,9 @@
+target/
+.idea/
+*.iml
+.DS_Store
+*.logdockerfile-springboot/data/
+**/data/
+**/logs/
+**/data/
+**/transactions/
