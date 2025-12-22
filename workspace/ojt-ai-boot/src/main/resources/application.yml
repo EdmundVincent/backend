@@ -19,6 +19,14 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
+# JWT 設定
+jwt:
+  # 署名用の秘密鍵（本番環境では環境変数で管理すること）
+  # 最低32文字以上必要（HS256）
+  secret: ivis-chatbot-secure-secret-key-for-jwt-token-signing-do-not-commit-to-git
+  # トークン有効期限（ミリ秒）デフォルト24時間
+  expiration: 86400000
+
 logging:
   level:
     root: INFO

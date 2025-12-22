@@ -1,6 +1,7 @@
 package com.ivis.starter.filter;
 
 import com.ivis.component.auth.JwtUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 
+@Slf4j
 @Component
 public class JwtWebFilter implements WebFilter {
 
@@ -48,7 +50,8 @@ public class JwtWebFilter implements WebFilter {
                             .switchIfEmpty(chain.filter(exchange)); // トークンがRedisに存在しないか、不一致
                 }
             } catch (Exception e) {
-                // トークンが無効な場合、無視してSecurityに処理させる（401）
+                // トークンが無効な場合、警告ログを記録してSecurityに処理させる（401）
+                log.warn("JWT validation failed: {}", e.getMessage());
             }
         }
         return chain.filter(exchange);
