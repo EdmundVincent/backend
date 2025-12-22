@@ -2,7 +2,7 @@
     "name": "ivis-ai-translator",
     "dockerComposeFile": "../docker-compose.yml",
     "service": "rag-api",
-    "workspaceFolder": "/workspace",
+    "workspaceFolder": "/home/vscode/workspace",
     "features": {
         "ghcr.io/devcontainers/features/git:1": {}
     },

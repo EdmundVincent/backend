@@ -2,14 +2,12 @@ package com.ivis.boot.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ivis.boot.dto.auth.LoginRequest;
 import com.ivis.boot.dto.auth.LoginResponse;
 import com.ivis.boot.dto.auth.UserCacheInfo;
 import com.ivis.component.auth.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -22,7 +20,8 @@ import java.util.Arrays;
 public class AuthService {
 
     private final JwtUtil jwtUtil;
-    private final PasswordEncoder passwordEncoder;
+    // TODO: 実際のDB認証を実装する際に使用
+    // private final PasswordEncoder passwordEncoder;
     private final ReactiveStringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
