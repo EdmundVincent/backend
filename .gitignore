@@ -2,8 +2,25 @@ target/
 .idea/
 *.iml
 .DS_Store
-*.logdockerfile-springboot/data/
+*.log
+
+# Docker data directories
+dockerfile-springboot/data/
 **/data/
 **/logs/
-**/data/
 **/transactions/
+
+# Environment files with secrets (use .env.example as template)
+.env
+**/.env
+!**/.env.example
+
+# Build outputs
+*.jar
+*.war
+*.class
+
+# IDE
+.vscode/settings.json
+*.swp
+*.swo

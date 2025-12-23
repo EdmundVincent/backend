@@ -1,220 +1,259 @@
-# IVIS AI Translator - インテリジェント・マルチモーダル翻訳チャットボット
+# OJT AI Feature Backend
 
 ## 📋 プロジェクト概要
 
-IVIS AI Translatorは、Spring Boot 3.4.1をベースに構築されたインテリジェント翻訳サービスであり、以下の機能をサポートしています：
-- **マルチモーダル入力**：テキストおよび画像の翻訳
-- **自動言語検出**：ソース言語の自動識別
-- **RAG拡張**：ベクトルデータベースに基づく知識検索
-- **非同期処理**：メッセージキュー駆動の高効率アーキテクチャ
-- **ナレッジグラフ**：Neo4jによるセマンティック強化
+本プロジェクトは、Spring Boot 3.4.1 + WebFlux をベースに構築されたリアクティブな RAG (Retrieval-Augmented Generation) バックエンドサービスです。
 
-## 🏗️ プロジェクトアーキテクチャ
+### 主な機能
+- **JWT認証**: セキュアなトークンベース認証
+- **RAGパイプライン**: ドキュメント取り込み→チャンク→ベクトル検索→回答生成
+- **リアクティブアーキテクチャ**: Spring WebFlux + R2DBC による非同期処理
+- **マイクロサービス対応**: Kafka(Redpanda) によるイベント駆動
 
-### マルチモジュール構成
+## 🏗️ プロジェクト構造
+
 ```
-ojt-ai/
-├── pom.xml                  # ルートPOM（バージョン管理）
-├── common-bom/              # BOMモジュール（依存関係管理）
-├── common-dependencies/     # 共通依存関係定義
-├── common-starter/          # カスタムStarter（自動設定）
-├── translator-api/          # コア翻訳サービスモジュール
-└── dockerfile-springboot/   # Dockerコンテナ化設定
-    ├── docker-compose.yml   # コンテナオーケストレーション
-    ├── Dockerfile           # マルチステージビルド
-    └── .devcontainer/       # VS Codeコンテナ開発設定
+ojt-ai-feature-backend/
+├── docker-compose.yml           # 統合Docker Compose設定
+├── .env.example                 # 環境変数テンプレート
+├── dockerfile-springboot/       # Spring Boot用Dockerfile
+│   ├── Dockerfile
+│   └── docker-compose.yml       # 開発用（参考）
+├── ojt-ai-feature-ragworker/    # C++ RAG Workerモジュール
+│   └── dockerfiles/rag-worker/
+│       ├── compose/             # RAG Worker用Docker Compose
+│       └── scripts/             # 初期化スクリプト
+│           └── init_db.sql      # DB初期化（users + kb_document + kb_chunk）
+└── workspace/                   # Spring Bootワークスペース
+    ├── pom.xml                  # 親POM
+    ├── component/               # 共通コンポーネント
+    │   └── src/main/java/com/ivis/component/
+    │       ├── auth/            # JWT認証（JwtUtil, JwtFilter）
+    │       ├── exception/       # 例外処理（BusinessException, ResourceNotFoundException）
+    │       ├── minio/           # MinIO統合
+    │       └── web/             # Web共通（ApiResponse, CorsConfig）
+    ├── dependence/              # 依存関係管理
+    ├── springboot-starter/      # カスタムStarter
+    │   ├── starter-core/        # コアStarter
+    │   ├── starter-flux/        # WebFlux Starter
+    │   └── starter-security/    # Security Starter
+    └── ojt-ai-boot/             # メインアプリケーション
+        └── src/main/java/com/ivis/boot/
+            ├── OjtAiBootApplication.java
+            ├── config/          # 設定クラス
+            ├── controller/      # REST API（AuthController, HelloController）
+            ├── dto/             # DTOクラス
+            ├── entity/          # R2DBCエンティティ（User）
+            ├── repository/      # R2DBCリポジトリ（UserRepository）
+            └── service/         # ビジネスロジック
+                ├── AuthService.java     # 認証サービス
+                └── llm/                 # LLMサービス
+                    ├── LlmService.java             # インターフェース
+                    └── AzureOpenAiLlmService.java  # Azure実装
 ```
 
-### 技術スタック
+## 🛠️ 技術スタック
 
 | コンポーネント | 技術 | 用途 |
 |------|------|------|
-| **フレームワーク** | Spring Boot 3.4.1 + Spring Cloud | Webフレームワーク |
-| **データベース** | PostgreSQL 16 + pgvector | リレーショナルデータ + ベクトルストア |
-| **キャッシュ** | Redis 7.2 | キャッシュ & セッション管理 |
-| **メッセージキュー** | Kafka + Zookeeper | 非同期処理 & 分離 |
-| **グラフデータベース** | Neo4j 5.15 | ナレッジグラフ & エンティティ関係 |
-| **オブジェクトストレージ** | MinIO | 画像ストレージ |
-| **言語検出** | langdetect | 自動言語識別 |
-| **JDK** | OpenJDK 17 | 実行環境 |
+| **フレームワーク** | Spring Boot 3.4.1 + WebFlux | リアクティブWeb |
+| **データベース** | PostgreSQL 16 + R2DBC | リレーショナルデータ |
+| **認証** | JWT + BCrypt | トークン認証 + パスワード暗号化 |
+| **キャッシュ** | Redis | セッション + トークン管理 |
+| **メッセージキュー** | Redpanda (Kafka互換) | 非同期処理 |
+| **ベクトルDB** | Qdrant | RAG検索 |
+| **オブジェクトストレージ** | MinIO | ファイルアップロード |
+| **グラフDB** | Neo4j 5.15 | ナレッジグラフ（オプション） |
+| **JDK** | OpenJDK 21 | 実行環境 |
 
 ## 🚀 クイックスタート
 
 ### 前提条件
 - Docker & Docker Compose
-- JDK 17+
+- JDK 21+
 - Maven 3.8+
-- VS Code (任意、Remote Containersを使用する場合)
 
-### 1. コンテナ環境の起動
+### 1. 環境変数の設定
 
 ```bash
-cd ojt-ai/dockerfile-springboot
+cp .env.example .env
+# .envファイルを編集して、必要な値を設定
+```
+
+### 2. Dockerサービスの起動
+
+```bash
 docker-compose up -d
 ```
 
-全サービスの稼働状態を確認：
+サービス確認：
 ```bash
 docker-compose ps
 ```
 
-**サービスアクセスアドレス：**
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
-- Kafka: `localhost:9092`
-- Neo4j: `localhost:7474` (ユーザー: neo4j, パスワード: ivis_neo4j_password)
-- MinIO: `localhost:9001` (ユーザー: minioadmin, パスワード: minioadmin)
+**サービスアクセス：**
+| サービス | URL/Port | 備考 |
+|---------|----------|------|
+| Spring Boot API | http://localhost:8080 | メインAPI |
+| PostgreSQL | localhost:5432 | DB: rag_db |
+| Redis | localhost:6379 | キャッシュ |
+| Redpanda | localhost:9092 | Kafka API |
+| MinIO Console | http://localhost:9001 | オブジェクトストレージ |
+| Qdrant | http://localhost:6333 | ベクトルDB |
+| Neo4j Browser | http://localhost:7474 | グラフDB |
 
-### 2. プロジェクトのビルド
+### 3. ローカル開発
 
 ```bash
-cd ojt-ai
-mvn clean install
+cd workspace
+mvn clean install -DskipTests
+mvn spring-boot:run -pl ojt-ai-boot
 ```
 
-### 3. アプリケーションの実行
+## 📖 API エンドポイント
 
+### 認証 API
+
+**ログイン：**
 ```bash
-cd translator-api
-mvn spring-boot:run
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "123456"}'
 ```
 
-起動後にアクセス: `http://localhost:8080`
+**レスポンス：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "username": "admin"
+  }
+}
+```
 
-## 📖 API ドキュメント
-
-### 翻訳リクエストの送信
-
-**テキスト翻訳：**
+**ユーザー登録：**
 ```bash
-curl -X POST http://localhost:8080/api/v1/translations/submit \
+curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "requestType": "TEXT",
-    "sourceText": "Hello, world!",
-    "sourceLanguage": "auto",
-    "targetLanguage": "ja"
+    "username": "newuser",
+    "password": "password123",
+    "email": "newuser@example.com"
   }'
 ```
 
-**画像翻訳：**
+**Hello エンドポイント（認証必須）：**
 ```bash
-curl -X POST http://localhost:8080/api/v1/translations/submit \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requestType": "IMAGE",
-    "imageUrl": "https://example.com/image.jpg",
-    "targetLanguage": "ja"
-  }'
+curl http://localhost:8080/api/hello \
+  -H "Authorization: Bearer <your-token>"
 ```
 
-### 翻訳結果の取得
+### RAG API（開発中）
 
-```bash
-curl http://localhost:8080/api/v1/translations/{requestId}
-```
+- `POST /api/rag/ingest` - ドキュメント取り込み
+- `POST /api/rag/search` - ベクトル検索
+- `POST /api/rag/answer` - 回答生成
 
-## 📊 データベース設計
-
-### PostgreSQL 主要テーブル
-
-| テーブル名 | 用途 |
-|------|------|
-| `users` | ユーザー情報 |
-| `translation_requests` | 翻訳リクエスト履歴 |
-| `knowledge_vectors` | RAGナレッジベース（pgvector） |
-
-### Neo4j ノードタイプ
-
-- `User`: ユーザーノード
-- `Language`: 言語ノード
-- `Term`: 用語ノード
-- `Document`: ドキュメントノード
-
-## 🔧 開発設定
-
-### VS Code Remote Containersの使用
-
-1. "Dev Containers" 拡張機能をインストール
-2. `F1` キーを押し、"Dev Containers: Reopen in Container" を入力
-3. システムが自動的に開発環境を設定し、docker-composeを起動します
-
-### モジュール依存関係
-
-```
-translator-api
-    └── common-starter
-        ├── common-dependencies
-        │   └── common-bom
-        └── spring-boot-starters
-```
-
-## 🛠️ ビルドとデプロイ
-
-### Mavenによるパッケージング
+## 🧪 テスト
 
 ```bash
-mvn clean package -DskipTests
+cd workspace
+mvn test
 ```
 
-### Dockerイメージのビルド
-
+テストカバレッジ：
 ```bash
-cd dockerfile-springboot
-docker build -t ivis-translator:latest .
+mvn test jacoco:report
 ```
 
-### Docker Composeによるデプロイ
+## 🔒 セキュリティ
 
-```bash
-docker-compose -f docker-compose.yml up -d
+### デフォルト認証情報（開発用）
+- **ユーザー**: admin
+- **パスワード**: 123456
+
+⚠️ **本番環境では必ず変更してください！**
+
+### 環境変数
+
+| 変数 | 説明 | デフォルト |
+|------|------|---------|
+| `JWT_SECRET` | JWTトークン署名キー | (必須) |
+| `POSTGRES_PASSWORD` | PostgreSQLパスワード | rag_password |
+| `MINIO_ROOT_PASSWORD` | MinIOパスワード | minio123 |
+| `NEO4J_PASSWORD` | Neo4jパスワード | neo4j_password |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI APIキー | (必須) |
+
+## 📁 データベーススキーマ
+
+### PostgreSQL
+
+```sql
+-- ユーザーテーブル
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,  -- BCrypt暗号化
+  email VARCHAR(100) UNIQUE,
+  enabled BOOLEAN DEFAULT TRUE,
+  roles VARCHAR(255) DEFAULT 'ROLE_USER',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ドキュメントメタデータ
+CREATE TABLE kb_document (...);
+
+-- ドキュメントチャンク
+CREATE TABLE kb_chunk (...);
 ```
-
-## 📝 設定ファイル説明
-
-### application.yml
-
-- **データベース設定**: PostgreSQL接続プール、JPAダイアレクト
-- **Redis設定**: 接続タイムアウト、プールサイズ
-- **Kafka設定**: プロデューサー・コンシューマー設定
-- **Actuator監視**: ヘルスチェック、メトリクス収集
-
-## 🔐 セキュリティ推奨事項
-
-- 全てのデフォルトパスワード（Redis, Kafka, Neo4j, MinIO）を変更する
-- 本番環境ではSSL/TLSを有効にする
-- 認証・認可メカニズムを実装する
-- 定期的にデータベースをバックアップする
-
-## 📈 パフォーマンス最適化
-
-- Redisによるホットデータのキャッシュ
-- Kafkaによる翻訳タスクの非同期処理
-- ベクトルインデックスによる類似検索の高速化
-- 接続プールの最適化
 
 ## 🐛 トラブルシューティング
 
-### コンテナ起動失敗
+### コンテナログ確認
 ```bash
-docker-compose logs -f [service-name]
+docker-compose logs -f rag-api
+docker-compose logs -f postgres
 ```
 
-### データベース接続失敗
+### データベース接続テスト
 ```bash
-docker exec ivis-postgres psql -U ivis_user -d ivis_translator
+docker exec -it ivis-postgres psql -U rag_user -d rag_db
 ```
 
-## 📚 参考リソース
+### Redisキャッシュ確認
+```bash
+docker exec -it ivis-redis redis-cli
+> KEYS *
+```
 
-- [Spring Boot 3.4.1 ドキュメント](https://spring.io/projects/spring-boot)
-- [PostgreSQL pgvector拡張](https://github.com/pgvector/pgvector)
-- [Neo4jドライバー](https://github.com/neo4j/neo4j-java-driver)
-- [Kafkaドキュメント](https://kafka.apache.org/documentation/)
+### Kafkaトピック確認
+```bash
+docker exec -it ivis-kafka-tools kcat -b redpanda:9092 -L
+```
 
-## 👥 チームメンバー
+## 📝 開発ガイドライン
 
-本プロジェクトは3名のバックエンドチームによる共同開発であり、社内のマイクロサービスアーキテクチャ標準に準拠しています。
+### コード規約
+- Reactive Streams (Project Reactor) を使用
+- `Mono<T>` / `Flux<T>` を返却型として使用
+- ブロッキング操作は避ける
+
+### 例外処理
+- `BusinessException` - ビジネスロジックエラー
+- `ResourceNotFoundException` - リソース未発見
+
+### APIレスポンス
+```java
+ApiResponse.success(data);    // 成功
+ApiResponse.error(code, msg); // エラー
+```
+
+## 👥 開発チーム
+
+本プロジェクトは3名のバックエンドチームによる共同開発です。
 
 ## 📄 ライセンス
 
@@ -222,4 +261,4 @@ Internal Use Only - 社内利用限定
 
 ---
 
-最終更新日：2025年12月15日
+最終更新日：2025年12月

@@ -1,6 +1,5 @@
 package com.ivis.boot.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -21,7 +20,6 @@ import java.util.concurrent.CompletableFuture;
 public class RagKafkaProducerService {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final ObjectMapper objectMapper;
 
     // Topic 名称（与 CONTRACT.md 保持一致）
     private static final String TOPIC_DOC_INGEST = "doc_ingest";

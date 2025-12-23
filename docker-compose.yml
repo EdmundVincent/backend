@@ -1,13 +1,13 @@
 version: '3.8'
 
 # ========================================================
-# 统一的 Docker Compose 配置
-# 基于 RAG Worker 的配置，添加 Spring Boot 和 Redis
+# 统一皁EDocker Compose 配置
+# 基亁ERAG Worker 皁E�E置�E�添加 Spring Boot 咁ERedis
 # ========================================================
 
 services:
   # ========================================================
-  # 1. Redpanda (Kafka 兼容的消息队列)
+  # 1. Redpanda (Kafka 兼容皁E���E队�E)
   # ========================================================
   redpanda:
     image: redpandadata/redpanda:latest
@@ -46,11 +46,11 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
-  # 2. Redis (缓存 - Spring Boot 使用)
+  # 2. Redis (缓孁E- Spring Boot 使用)
   # ========================================================
   redis:
     image: redis:latest
@@ -60,11 +60,11 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
-  # 3. PostgreSQL (关系型数据库 - RAG Worker 使用)
+  # 3. PostgreSQL (关系型数据庁E- RAG Worker 使用)
   # ========================================================
   postgres:
     image: postgres:16
@@ -83,11 +83,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
-  # 4. MinIO (对象存储 - 文件上传)
+  # 4. MinIO (对象存储 - 斁E��上传)
   # ========================================================
   minio:
     image: minio/minio:latest
@@ -107,11 +107,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
-  # 5. Qdrant (向量数据库 - RAG Worker 使用)
+  # 5. Qdrant (向量数据庁E- RAG Worker 使用)
   # ========================================================
   qdrant:
     image: qdrant/qdrant:latest
@@ -126,11 +126,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
-  # 6. Neo4j (图数据库 - 可选，保留以防需要)
+  # 6. Neo4j (图数据庁E- 可选，保留以防需要E
   # ========================================================
   neo4j:
     image: neo4j:5.15-community
@@ -147,7 +147,7 @@ services:
       - neo4j-data:/data
       - neo4j-logs:/logs
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
@@ -158,14 +158,14 @@ services:
     container_name: ivis-minio-client
     entrypoint: [ "/bin/sh", "-c", "sleep infinity" ]
     networks:
-      - ivis-net
+      - ragnet
 
   kafka-tools:
     image: edenhill/kcat:1.7.1
     container_name: ivis-kafka-tools
     entrypoint: [ "/bin/sh", "-c", "tail -f /dev/null" ]
     networks:
-      - ivis-net
+      - ragnet
 
   # ========================================================
   # 8. 初始化服务
@@ -181,7 +181,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - ivis-net
+      - ragnet
     restart: "no"
 
   minio-init:
@@ -196,7 +196,7 @@ services:
       minio:
         condition: service_healthy
     networks:
-      - ivis-net
+      - ragnet
     restart: "no"
 
   kafka-init:
@@ -210,11 +210,11 @@ services:
       redpanda:
         condition: service_healthy
     networks:
-      - ivis-net
+      - ragnet
     restart: "no"
 
   # ========================================================
-  # 9. C++ RAG Worker (领导开发的核心处理引擎)
+  # 9. C++ RAG Worker (颁E��开发的核忁E��E��引擎)
   # ========================================================
   rag-worker:
     build:
@@ -244,7 +244,7 @@ services:
       AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:-text-embedding-3-large}
       AZURE_OPENAI_CHAT_DEPLOYMENT: ${AZURE_OPENAI_CHAT_DEPLOYMENT:-DeepSeek-V3.2}
       DEMO_MODE: ${DEMO_MODE:-false}
-    # 注意：不要在运行时挂载 /app，否则会覆盖镜像内已编译的二进制
+    # 注意：不要在运行时挂载 /app�E�否则会要E��镜像冁E��编译的二进制
     depends_on:
       redpanda:
         condition: service_healthy
@@ -261,13 +261,13 @@ services:
       kafka-init:
         condition: service_completed_successfully
     networks:
-      - ivis-net
+      - ragnet
     restart: always
-    # 自动启动 Worker 消费 Kafka 消息
+    # 自动启动 Worker 消费 Kafka 消�E
     command: [ "/bin/bash", "-c", "/app/rag-worker/build/rag-worker-dev --consume-loop" ]
 
   # ========================================================
-  # 10. Spring Boot API (你的后端服务)
+  # 10. Spring Boot API (你皁E��端服务)
   # ========================================================
   rag-api:
     build:
@@ -280,6 +280,12 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      # R2DBC PostgreSQL connection
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-rag_db}
+      POSTGRES_USER: ${POSTGRES_USER:-rag_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag_password}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
@@ -296,15 +302,16 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - ivis-net
+      - ragnet
     restart: always
     command: sh -c "mvn clean install -DskipTests && mvn spring-boot:run -pl ojt-ai-boot"
 
 # ========================================================
-# 网络配置
+# 网络�E置
+# 使用 ragnet 丁Erag-worker 配置保持一致
 # ========================================================
 networks:
-  ivis-net:
+  ragnet:
     driver: bridge
 
 # ========================================================
@@ -318,3 +325,4 @@ volumes:
   qdrant-data:
   neo4j-data:
   neo4j-logs:
+

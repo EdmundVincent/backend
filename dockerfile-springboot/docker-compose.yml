@@ -15,7 +15,7 @@ services:
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
 
@@ -33,7 +33,7 @@ services:
     volumes:
       - ./data/redis:/data
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
@@ -46,7 +46,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     networks:
-      - ivis-net
+      - ragnet
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -63,7 +63,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
-      - ivis-net
+      - ragnet
 
   # ========================================================
   # 4. Neo4j (Graph Database - Knowledge Graph)
@@ -83,7 +83,7 @@ services:
       - ./data/neo4j/data:/data
       - ./data/neo4j/logs:/logs
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   # ========================================================
@@ -102,7 +102,7 @@ services:
     volumes:
       - ./data/minio:/data
     networks:
-      - ivis-net
+      - ragnet
     restart: always
 
   rag-api:
@@ -112,6 +112,12 @@ services:
     container_name: ivis-rag-api
     env_file:
       - ./.env
+    environment:
+      # Use Redpanda broker available on external network
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      # Redis configuration (required for proper startup)
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     ports:
       - "8080:8080"
 
@@ -121,15 +127,18 @@ services:
     #   - rabbitmq
     #   - neo4j
     networks:
-      - ivis-net
+      - ragnet
+      - ojt-ai-feature-backend_ragnet
     restart: always
     volumes:
       - ../workspace:/home/vscode/workspace:rw
     command: sh -c "mvn clean install -DskipTests && mvn spring-boot:run -pl ojt-ai-boot"
 
 networks:
-  ivis-net:
+  ragnet:
     driver: bridge
+  ojt-ai-feature-backend_ragnet:
+    external: true
 
 # volumes:
 #   postgres_data:
@@ -137,3 +146,4 @@ networks:
 #   rabbitmq_data:
 #   neo4j_data:
 #   minio_data:
+

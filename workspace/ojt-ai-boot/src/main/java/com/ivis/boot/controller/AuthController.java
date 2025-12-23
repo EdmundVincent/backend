@@ -2,6 +2,7 @@ package com.ivis.boot.controller;
 
 import com.ivis.boot.dto.auth.LoginRequest;
 import com.ivis.boot.dto.auth.LoginResponse;
+import com.ivis.boot.dto.auth.RegisterRequest;
 import com.ivis.boot.dto.auth.UserCacheInfo;
 import com.ivis.boot.service.AuthService;
 import com.ivis.component.web.ApiResponse;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+
+import jakarta.validation.Valid;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -29,6 +33,23 @@ public class AuthController {
         return authService.login(request)
                 .map(ApiResponse::success)
                 .onErrorResume(e -> Mono.just(ApiResponse.error(401, e.getMessage())));
+    }
+
+    /**
+     * ユーザー登録API
+     */
+    @PostMapping("/register")
+    public Mono<ApiResponse<Map<String, Object>>> register(@Valid @RequestBody RegisterRequest request) {
+        return authService.register(request)
+                .map(user -> {
+                    Map<String, Object> result = new java.util.HashMap<>();
+                    result.put("id", user.getId());
+                    result.put("username", user.getUsername());
+                    result.put("email", user.getEmail());
+                    result.put("message", "Registration successful");
+                    return ApiResponse.success(result);
+                })
+                .onErrorResume(e -> Mono.just(ApiResponse.error(400, e.getMessage())));
     }
 
     @PostMapping("/logout")

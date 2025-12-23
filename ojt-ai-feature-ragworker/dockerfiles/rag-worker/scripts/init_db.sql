@@ -1,7 +1,29 @@
 -- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- ========================================================
+-- User Management Table (for Spring Boot Auth)
+-- ========================================================
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100) UNIQUE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  roles VARCHAR(255) NOT NULL DEFAULT 'ROLE_USER',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create default admin user (password: 123456, BCrypt encoded)
+-- The password is encoded using pgcrypto's crypt function with blowfish algorithm
+INSERT INTO users (username, password, email, roles) 
+VALUES ('admin', crypt('123456', gen_salt('bf', 10)), 'admin@example.com', 'ROLE_ADMIN,ROLE_USER')
+ON CONFLICT (username) DO NOTHING;
+
+-- ========================================================
 -- Documents metadata
+-- ========================================================
 CREATE TABLE IF NOT EXISTS kb_document (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id text NOT NULL,
