@@ -1,0 +1,29 @@
+# Test configuration
+spring:
+  main:
+    web-application-type: reactive
+  r2dbc:
+    url: r2dbc:h2:mem:///testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+
+jwt:
+  secret: test-secret-key-for-unit-testing-at-least-32-characters
+  expiration: 3600000
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: test-bucket
+
+logging:
+  level:
+    root: WARN
+    com.ivis: DEBUG
