@@ -1,0 +1,97 @@
+-- Found AWS SDK for C++, Version: 1.11.710, Install Root:/opt/vcpkg/installed/x64-linux, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core;AWS::aws-crt-cpp;AWS::aws-c-http;AWS::aws-c-mqtt;AWS::aws-c-cal;AWS::aws-c-auth;AWS::aws-c-common;AWS::aws-c-io;AWS::aws-checksums;AWS::aws-c-event-stream;AWS::aws-c-s3;AWS::aws-c-compression;AWS::aws-c-sdkutils;pthread;curl
+-- Try finding aws-cpp-sdk-core
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: Crypto 
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0")  
+-- Found aws-cpp-sdk-s3
+-- Found OpenSSL: /opt/vcpkg/installed/x64-linux/lib/libcrypto.a (found version "3.6.0") found components: SSL Crypto 
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /app/rag-worker/build
+[100%] Built target rag-worker-dev
+[pipeline] produce demo ingest
+[2025-12-19T07:00:47.800Z][INFO] rag-worker starting (version 0.1.0-dev)
+[2025-12-19T07:00:47.801Z][INFO] config loaded
+[2025-12-19T07:00:47.801Z][INFO] --produce-demo starting
+[2025-12-19T07:00:47.812Z][INFO] demo message sent to topic doc_ingest
+[pipeline] consume once
+[2025-12-19T07:00:47.832Z][INFO] rag-worker starting (version 0.1.0-dev)
+[2025-12-19T07:00:47.832Z][INFO] config loaded
+[2025-12-19T07:00:47.832Z][INFO] --consume-once starting
+[2025-12-19T07:00:47.858Z][INFO] message partition=1 offset=3 doc_id=00000000-0000-0000-0000-000000000001 tenant_id=tenant-001 kb_id=kb-001 trace_id=demo-trace-001
+[2025-12-19T07:00:47.862Z][INFO] already READY, skip
+[2025-12-19T07:00:47.864Z][INFO] committed offset: 1:3
+[pipeline] embed doc 00000000-0000-0000-0000-000000000001
+[2025-12-19T07:00:47.883Z][INFO] rag-worker starting (version 0.1.0-dev)
+[2025-12-19T07:00:47.883Z][INFO] config loaded
+[2025-12-19T07:00:47.883Z][INFO] --embed-doc starting for 00000000-0000-0000-0000-000000000001
+[2025-12-19T07:00:50.675Z][INFO] embedding + qdrant upsert completed, chunks=14
+[pipeline] search
+[2025-12-19T07:00:50.699Z][INFO] rag-worker starting (version 0.1.0-dev)
+[2025-12-19T07:00:50.700Z][INFO] config loaded
+collection=tenant-001__kb-001 topk=5 query="demo 文档中的关键词"
+#1 score=0.408801 doc_id=00000000-0000-0000-0000-000000000001 seq_no=0
+MinIO demo document for rag-docs bucket.
+
+This file is intentionally verbose to exceed 5KB. It represents a multi-tenant,
+multi-knowledge-base document payload that downstream pipelines may ingest ...
+#2 score=0.312109 doc_id=00000000-0000-0000-0000-000000000001 seq_no=3
+tetur posuere. Fusce cursus velit
+ut sapien commodo, quis tristique dui tincidunt. Vivamus eget fermentum lorem,
+ac laoreet sapien. Donec auctor aliquam eros, ut sodales quam bibendum ut.
+Suspendis...
+#3 score=0.300856 doc_id=00000000-0000-0000-0000-000000000001 seq_no=4
+e quick brown fox jumps over the lazy dog while testing MinIO demo object sizing requirements.
+Line padding 4: The quick brown fox jumps over the lazy dog while testing MinIO demo object sizing req...
+#4 score=0.28186 doc_id=00000000-0000-0000-0000-000000000001 seq_no=7
+jumps over the lazy dog while testing MinIO demo object sizing requirements.
+Line padding 21: The quick brown fox jumps over the lazy dog while testing MinIO demo object sizing requirements.
+Line p...
+#5 score=0.27712 doc_id=00000000-0000-0000-0000-000000000001 seq_no=13
+while testing MinIO demo object sizing requirements.
+Line padding 55: The quick brown fox jumps over the lazy dog while testing MinIO demo object sizing requirements.
+Line padding 56: The quick bro...
+[pipeline] answer
+[2025-12-19T07:00:50.868Z][INFO] rag-worker starting (version 0.1.0-dev)
+[2025-12-19T07:00:50.869Z][INFO] config loaded
+Answer:
+根据提供的文档内容，这份演示文档的用途是作为多租户、多知识库文档负载的示例，用于模拟真实文档的大小和结构，以便下游管道进行向量化和索引处理 [doc_id=00000000-0000-0000-0000-000000000001 seq_no=0]。
+
+Sources:
+- doc_id=00000000-0000-0000-0000-000000000001 seq_no=0 score=0.366649
+- doc_id=00000000-0000-0000-0000-000000000001 seq_no=3 score=0.246034
+- doc_id=00000000-0000-0000-0000-000000000001 seq_no=4 score=0.234898
+- doc_id=00000000-0000-0000-0000-000000000001 seq_no=6 score=0.22935
+- doc_id=00000000-0000-0000-0000-000000000001 seq_no=13 score=0.223722

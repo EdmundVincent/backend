@@ -36,16 +36,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # ビルドステージ(Stage 1)で生成されたJARファイルのみをコピーします
 USER vscode
 
-
-
-
-
-
-
 # pom.xml のあるディレクトリに移動
 WORKDIR /home/vscode/workspace
-# Mavenでパッケージング
-# RUN mvn clean package -DskipTests
 
-# Dev Containerが終了しないようにするためのコマンド
-CMD [ "sleep","infinity" ]
+# Spring Boot アプリケーション起動コマンド
+# docker-compose で指定されるコマンドで実行される
+CMD [ "bash" ]

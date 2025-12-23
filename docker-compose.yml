@@ -1,0 +1,320 @@
+version: '3.8'
+
+# ========================================================
+# 统一的 Docker Compose 配置
+# 基于 RAG Worker 的配置，添加 Spring Boot 和 Redis
+# ========================================================
+
+services:
+  # ========================================================
+  # 1. Redpanda (Kafka 兼容的消息队列)
+  # ========================================================
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: ivis-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr
+      - 0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - redpanda:8082
+      - --rpc-addr
+      - 0.0.0.0:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: [ "CMD-SHELL", "rpk cluster health --api-urls localhost:9644 | grep -qi healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 2. Redis (缓存 - Spring Boot 使用)
+  # ========================================================
+  redis:
+    image: redis:latest
+    container_name: ivis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 3. PostgreSQL (关系型数据库 - RAG Worker 使用)
+  # ========================================================
+  postgres:
+    image: postgres:16
+    container_name: ivis-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rag_db}
+      POSTGRES_USER: ${POSTGRES_USER:-rag_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rag_user -d rag_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 4. MinIO (对象存储 - 文件上传)
+  # ========================================================
+  minio:
+    image: minio/minio:latest
+    container_name: ivis-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 5. Qdrant (向量数据库 - RAG Worker 使用)
+  # ========================================================
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ivis-qdrant
+    volumes:
+      - qdrant-data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 6. Neo4j (图数据库 - 可选，保留以防需要)
+  # ========================================================
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: ivis-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4j_password}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 512M
+      NEO4J_server_memory_heap_max__size: 512M
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks:
+      - ivis-net
+    restart: always
+
+  # ========================================================
+  # 7. 工具容器
+  # ========================================================
+  mc:
+    image: minio/mc
+    container_name: ivis-minio-client
+    entrypoint: [ "/bin/sh", "-c", "sleep infinity" ]
+    networks:
+      - ivis-net
+
+  kafka-tools:
+    image: edenhill/kcat:1.7.1
+    container_name: ivis-kafka-tools
+    entrypoint: [ "/bin/sh", "-c", "tail -f /dev/null" ]
+    networks:
+      - ivis-net
+
+  # ========================================================
+  # 8. 初始化服务
+  # ========================================================
+  postgres-init:
+    image: postgres:16
+    entrypoint: [ "/bin/sh", "-c", "psql -h postgres -U rag_user -d rag_db -v ON_ERROR_STOP=1 -f /init_db.sql" ]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-rag_password}
+    volumes:
+      - ./ojt-ai-feature-ragworker/dockerfiles/rag-worker/scripts/init_db.sql:/init_db.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ivis-net
+    restart: "no"
+
+  minio-init:
+    image: minio/mc
+    entrypoint: [ "/bin/sh", "/init_minio.sh" ]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    volumes:
+      - ./ojt-ai-feature-ragworker/dockerfiles/rag-worker/scripts/init_minio.sh:/init_minio.sh:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - ivis-net
+    restart: "no"
+
+  kafka-init:
+    image: redpandadata/redpanda:latest
+    entrypoint: [ "/bin/sh", "/init_kafka.sh" ]
+    environment:
+      BROKER: ${KAFKA_BOOTSTRAP:-redpanda:9092}
+    volumes:
+      - ./ojt-ai-feature-ragworker/dockerfiles/rag-worker/scripts/init_kafka.sh:/init_kafka.sh:ro
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - ivis-net
+    restart: "no"
+
+  # ========================================================
+  # 9. C++ RAG Worker (领导开发的核心处理引擎)
+  # ========================================================
+  rag-worker:
+    build:
+      context: ./ojt-ai-feature-ragworker
+      dockerfile: dockerfiles/rag-worker/docker/Dockerfile.dev
+    container_name: ivis-rag-worker
+    working_dir: /app
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-redpanda:9092}
+      KAFKA_GROUP: ${KAFKA_GROUP:-rag-worker-group}
+      KAFKA_TOPIC_INGEST: ${KAFKA_TOPIC_INGEST:-doc_ingest}
+      KAFKA_TOPIC_SEARCH_REQUEST: rag_search_request
+      KAFKA_TOPIC_SEARCH_RESULT: rag_search_result
+      KAFKA_TOPIC_ANSWER_REQUEST: rag_answer_request
+      KAFKA_TOPIC_ANSWER_RESULT: rag_answer_result
+      KAFKA_TOPIC_FAILED: rag_failed
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-rag-docs}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
+      POSTGRES_CONN: postgresql://rag_user:rag_password@postgres:5432/rag_db
+      QDRANT_ENDPOINT: ${QDRANT_ENDPOINT:-http://qdrant:6333}
+      EMBEDDER_PROVIDER: ${EMBEDDER_PROVIDER:-azure}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-02-15-preview}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:-text-embedding-3-large}
+      AZURE_OPENAI_CHAT_DEPLOYMENT: ${AZURE_OPENAI_CHAT_DEPLOYMENT:-DeepSeek-V3.2}
+      DEMO_MODE: ${DEMO_MODE:-false}
+    # 注意：不要在运行时挂载 /app，否则会覆盖镜像内已编译的二进制
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      postgres-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    networks:
+      - ivis-net
+    restart: always
+    # 自动启动 Worker 消费 Kafka 消息
+    command: [ "/bin/bash", "-c", "/app/rag-worker/build/rag-worker-dev --consume-loop" ]
+
+  # ========================================================
+  # 10. Spring Boot API (你的后端服务)
+  # ========================================================
+  rag-api:
+    build:
+      context: .
+      dockerfile: dockerfile-springboot/Dockerfile
+    container_name: ivis-rag-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
+      JWT_SECRET: ${JWT_SECRET:-ivis-chatbot-secure-secret-key-for-jwt-token-signing-do-not-commit-to-git}
+    volumes:
+      - ./workspace:/home/vscode/workspace:rw
+    depends_on:
+      redis:
+        condition: service_started
+      redpanda:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ivis-net
+    restart: always
+    command: sh -c "mvn clean install -DskipTests && mvn spring-boot:run -pl ojt-ai-boot"
+
+# ========================================================
+# 网络配置
+# ========================================================
+networks:
+  ivis-net:
+    driver: bridge
+
+# ========================================================
+# 数据卷
+# ========================================================
+volumes:
+  redpanda-data:
+  redis-data:
+  postgres-data:
+  minio-data:
+  qdrant-data:
+  neo4j-data:
+  neo4j-logs:

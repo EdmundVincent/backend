@@ -1,0 +1,193 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:latest
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr
+      - 0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - redpanda:8082
+      - --rpc-addr
+      - 0.0.0.0:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: [ "CMD-SHELL", "rpk cluster health --api-urls localhost:9644 | grep -qi healthy" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ragnet
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rag_user -d rag_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragnet
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragnet
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant-data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    healthcheck:
+      test: [ "CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragnet
+
+  mc:
+    image: minio/mc
+    entrypoint: [ "/bin/sh", "-c", "sleep infinity" ]
+    networks:
+      - ragnet
+
+  kafka-tools:
+    image: edenhill/kcat:1.7.1
+    entrypoint: [ "/bin/sh", "-c", "tail -f /dev/null" ]
+    networks:
+      - ragnet
+
+  postgres-init:
+    image: postgres:16
+    entrypoint: [ "/bin/sh", "-c", "psql -h postgres -U rag_user -d rag_db -v ON_ERROR_STOP=1 -f /init_db.sql" ]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../scripts/init_db.sql:/init_db.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ragnet
+    restart: "no"
+
+  minio-init:
+    image: minio/mc
+    entrypoint: [ "/bin/sh", "/init_minio.sh" ]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ../scripts/init_minio.sh:/init_minio.sh:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - ragnet
+    restart: "no"
+
+  kafka-init:
+    image: redpandadata/redpanda:latest
+    entrypoint: [ "/bin/sh", "/init_kafka.sh" ]
+    environment:
+      BROKER: ${KAFKA_BOOTSTRAP}
+    volumes:
+      - ../scripts/init_kafka.sh:/init_kafka.sh:ro
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - ragnet
+    restart: "no"
+
+  rag-worker-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    working_dir: /app
+    env_file:
+      - ./.env
+    command: [ "/bin/bash", "-c", "tail -f /dev/null" ]
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
+      KAFKA_GROUP: ${KAFKA_GROUP}
+      KAFKA_TOPIC_INGEST: ${KAFKA_TOPIC_INGEST}
+      KAFKA_TOPIC_INDEXED: ${KAFKA_TOPIC_INDEXED}
+      KAFKA_TOPIC_FAILED: ${KAFKA_TOPIC_FAILED}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      POSTGRES_CONN: ${POSTGRES_CONN}
+      QDRANT_ENDPOINT: ${QDRANT_ENDPOINT}
+      EMBEDDER_PROVIDER: ${EMBEDDER_PROVIDER}
+      DEMO_MODE: ${DEMO_MODE}
+    volumes:
+      - ../../../workspace/rag-worker:/app
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      postgres-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    networks:
+      - ragnet
+
+networks:
+  ragnet:
+    driver: bridge
+
+volumes:
+  redpanda-data:
+  postgres-data:
+  minio-data:
+  qdrant-data:

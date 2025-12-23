@@ -8,16 +8,31 @@ spring:
     web-application-type: reactive
   data:
     redis:
-      host: ivis-redis
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
   kafka:
-    bootstrap-servers: kafka:29092
+    # 使用 Redpanda（Kafka 兼容）
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:redpanda:9092}
     consumer:
-      group-id: ojt-ai-group
+      group-id: backend-api
       auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+
+# MinIO 配置
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+  access-key: ${MINIO_ACCESS_KEY:minio}
+  secret-key: ${MINIO_SECRET_KEY:minio123}
+  bucket: ${MINIO_BUCKET:rag-docs}
 
 # JWT 設定
 jwt:
