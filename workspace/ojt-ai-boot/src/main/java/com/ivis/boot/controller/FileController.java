@@ -9,9 +9,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,6 +31,14 @@ public class FileController {
     private final RagKafkaProducerService kafkaProducerService;
     private final JwtUtil jwtUtil;
 
+    // 允许上传的文件类型白名单
+    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(
+        ".pdf", ".txt", ".doc", ".docx", ".md", ".json", ".csv", ".xlsx", ".xls"
+    );
+    
+    // 最大文件大小 (100MB)
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024;
+
     /**
      * 文件上传接口
      * POST /api/file/upload
@@ -38,12 +49,30 @@ public class FileController {
      * @param authHeader JWT Token
      * @return 文档ID和状态
      */
+    @PreAuthorize("permitAll()")
     @PostMapping("/upload")
     public Mono<ApiResponse<FileUploadResponse>> uploadFile(
             @RequestPart("file") FilePart filePart,
             @RequestParam(value = "tenantId", required = false) String tenantId,
             @RequestParam(value = "kbId", defaultValue = "kb-001") String kbId,
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        
+        log.info("File upload request received - filePart: {}, kbId: {}", 
+            filePart != null ? filePart.filename() : "null", kbId);
+        
+        // 验证文件是否存在
+        if (filePart == null) {
+            log.error("File part is null");
+            return Mono.just(ApiResponse.error(400, "File is required"));
+        }
+        
+        // 验证文件类型和文件名安全性
+        String filename = filePart.filename();
+        String validationError = validateFile(filename);
+        if (validationError != null) {
+            log.warn("File validation failed: {}", validationError);
+            return Mono.just(ApiResponse.error(400, validationError));
+        }
         
         // 从 Token 提取用户名作为默认租户ID
         String username = extractUsername(authHeader);
@@ -53,7 +82,6 @@ public class FileController {
         
         // 生成文档ID
         String docId = UUID.randomUUID().toString();
-        String filename = filePart.filename();
         
         log.info("Uploading file: docId={}, filename={}, tenant={}, kb={}", 
             docId, filename, tenantId, kbId);
@@ -66,6 +94,7 @@ public class FileController {
         
         return minioService.uploadFile(filePart, objectName)
             .flatMap(s3Path -> {
+                log.info("File uploaded to MinIO: {}", s3Path);
                 // 发送文档摄取事件到 Kafka
                 return kafkaProducerService.sendDocIngestEvent(
                     docId, finalTenantId, kbId, s3Path, filename
@@ -76,7 +105,7 @@ public class FileController {
                     "File uploaded and queued for processing")
             )))
             .onErrorResume(e -> {
-                log.error("File upload failed", e);
+                log.error("File upload failed: {}", e.getMessage(), e);
                 return Mono.just(ApiResponse.error(500, 
                     "File upload failed: " + e.getMessage()));
             });
@@ -95,6 +124,34 @@ public class FileController {
             log.warn("Failed to extract username from token", e);
         }
         return "anonymous";
+    }
+
+    /**
+     * 验证文件安全性
+     * @param filename 文件名
+     * @return 错误信息，如果验证通过返回 null
+     */
+    private String validateFile(String filename) {
+        if (filename == null || filename.trim().isEmpty()) {
+            return "Filename is required";
+        }
+        
+        // 防止路径遍历攻击
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            return "Invalid filename: path traversal not allowed";
+        }
+        
+        // 检查文件类型白名单
+        String extension = getFileExtension(filename).toLowerCase();
+        if (extension.isEmpty()) {
+            return "File must have an extension";
+        }
+        
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            return "File type not allowed: " + extension + ". Allowed types: " + ALLOWED_EXTENSIONS;
+        }
+        
+        return null; // 验证通过
     }
 
     /**

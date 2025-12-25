@@ -263,8 +263,8 @@ services:
     networks:
       - ragnet
     restart: always
-    # 自动启动 Worker 消费 Kafka 消�E
-    command: [ "/bin/bash", "-c", "/app/rag-worker/build/rag-worker-dev --consume-loop" ]
+    # 自动启动 Worker 消费 Kafka 消息
+    command: [ "/bin/bash", "-c", "rag-worker-dev --kafka-worker" ]
 
   # ========================================================
   # 10. Spring Boot API (你皁E��端服务)
@@ -289,7 +289,12 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
-      JWT_SECRET: ${JWT_SECRET:-ivis-chatbot-secure-secret-key-for-jwt-token-signing-do-not-commit-to-git}
+      # ⚠️ 以下敏感信息必须在 .env 文件中配置
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      AI_OPENAI_ENDPOINT: ${AI_OPENAI_ENDPOINT:?AI_OPENAI_ENDPOINT is required}
+      AI_OPENAI_API_KEY: ${AI_OPENAI_API_KEY:?AI_OPENAI_API_KEY is required}
+      AI_OPENAI_DEPLOYMENT: ${AI_OPENAI_DEPLOYMENT:-DeepSeek-V3.2}
+      AI_OPENAI_API_VERSION: ${AI_OPENAI_API_VERSION:-2024-05-01-preview}
     volumes:
       - ./workspace:/home/vscode/workspace:rw
     depends_on:

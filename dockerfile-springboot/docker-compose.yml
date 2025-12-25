@@ -118,6 +118,11 @@ services:
       # Redis configuration (required for proper startup)
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      # ⚠️ 以下敏感信息必须在 .env 文件中配置
+      AI_OPENAI_ENDPOINT: ${AI_OPENAI_ENDPOINT:?AI_OPENAI_ENDPOINT is required}
+      AI_OPENAI_API_KEY: ${AI_OPENAI_API_KEY:?AI_OPENAI_API_KEY is required}
+      AI_OPENAI_DEPLOYMENT: ${AI_OPENAI_DEPLOYMENT:-DeepSeek-V3.2}
+      AI_OPENAI_API_VERSION: ${AI_OPENAI_API_VERSION:-2024-05-01-preview}
     ports:
       - "8080:8080"
 

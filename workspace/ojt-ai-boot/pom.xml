@@ -27,6 +27,12 @@
             <artifactId>starter-security</artifactId>
         </dependency>
         
+        <!-- Spring Boot Actuator for health checks and monitoring -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        
         <!-- R2DBC for Reactive Database Access -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -67,6 +73,14 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
         </dependency>
         <!-- MinIO SDK for file storage -->
         <dependency>

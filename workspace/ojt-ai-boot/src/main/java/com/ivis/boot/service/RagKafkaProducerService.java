@@ -58,13 +58,11 @@ public class RagKafkaProducerService {
                                          String tenantId, String kbId) {
         Map<String, Object> request = new HashMap<>();
         request.put("request_id", requestId);
+        request.put("trace_id", requestId);  // 使用 requestId 作为 trace_id
         request.put("query", query);
-        request.put("top_k", topK);
-        
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put("tenant", tenantId);
-        metadata.put("kb", kbId);
-        request.put("metadata", metadata);
+        request.put("topk", topK);  // 注意：Worker 期望的是 topk 而不是 top_k
+        request.put("tenant_id", tenantId);  // 扁平结构
+        request.put("kb_id", kbId);  // 扁平结构
 
         return sendMessage(TOPIC_SEARCH_REQUEST, requestId, request);
     }

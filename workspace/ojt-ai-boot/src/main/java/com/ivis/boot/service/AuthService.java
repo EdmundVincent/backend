@@ -41,7 +41,7 @@ public class AuthService {
      * 1. データベースからユーザーを取得
      * 2. パスワードを検証（BCrypt）
      * 3. JWT を生成
-     * 4. Token とユーザー情報を Redis にキャッシュ
+     * 4. Token とユーザー情報を Redis にキャッシュ（原子的にエラーハンドリング）
      */
     public Mono<LoginResponse> login(LoginRequest request) {
         return userRepository.findByUsernameAndEnabled(request.getUsername())
@@ -67,14 +67,49 @@ public class AuthService {
                 
                 String userInfoKey = "user:info:" + user.getUsername();
                 Mono<Boolean> saveUserInfo = Mono.fromCallable(() -> objectMapper.writeValueAsString(userInfo))
+                        .onErrorMap(e -> new BusinessException(500, "Failed to serialize user info: " + e.getMessage()))
                         .flatMap(json -> redisTemplate.opsForValue()
                                 .set(userInfoKey, json, Duration.ofHours(24)));
                 
                 log.info("User logged in: {}", user.getUsername());
                 
+                // 使用 Mono.zip 确保两次写入都成功，任一失败则回滚
                 return Mono.zip(saveToken, saveUserInfo)
-                        .thenReturn(new LoginResponse(token, user.getUsername()));
+                        .flatMap(tuple -> {
+                            Boolean tokenSaved = tuple.getT1();
+                            Boolean userInfoSaved = tuple.getT2();
+                            
+                            if (!Boolean.TRUE.equals(tokenSaved) || !Boolean.TRUE.equals(userInfoSaved)) {
+                                // 如果任一写入失败，清理已写入的数据
+                                log.warn("Redis write incomplete, rolling back: tokenSaved={}, userInfoSaved={}", 
+                                    tokenSaved, userInfoSaved);
+                                return rollbackRedisCache(tokenKey, userInfoKey)
+                                    .then(Mono.error(new BusinessException(500, "Failed to cache login session")));
+                            }
+                            
+                            return Mono.just(new LoginResponse(token, user.getUsername()));
+                        })
+                        .onErrorResume(e -> {
+                            if (e instanceof BusinessException) {
+                                return Mono.error(e);
+                            }
+                            log.error("Failed to cache login data to Redis", e);
+                            // Redis 失败时清理可能已写入的数据
+                            return rollbackRedisCache(tokenKey, userInfoKey)
+                                .then(Mono.error(new BusinessException(500, 
+                                    "Login failed due to cache error: " + e.getMessage())));
+                        });
             });
+    }
+
+    /**
+     * 回滚 Redis 缓存（清理可能已写入的数据）
+     */
+    private Mono<Void> rollbackRedisCache(String tokenKey, String userInfoKey) {
+        return Mono.zip(
+            redisTemplate.opsForValue().delete(tokenKey).onErrorResume(e -> Mono.just(false)),
+            redisTemplate.opsForValue().delete(userInfoKey).onErrorResume(e -> Mono.just(false))
+        ).then();
     }
 
     /**

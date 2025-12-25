@@ -1,0 +1,508 @@
+{
+	"info": {
+		"_postman_id": "ojt-ai-rag-collection-v2",
+		"name": "OJT-AI RAG API v2",
+		"description": "RAG 知识库 API 集合（v2 版本）\n\n**更新说明：**\n- tenantId/kbId 现在从 JWT Token 自动获取，无需客户端传入\n- 添加了请求体验证（query 必填、topK 范围 1-100）\n- context 字段类型修正为数组格式\n\n**测试顺序：**\n1. 先执行「登录」获取 Token\n2. 再执行其他需要认证的 API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "1. 公开接口（无需认证）",
+			"item": [
+				{
+					"name": "健康检查",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/actuator/health",
+							"host": ["{{base_url}}"],
+							"path": ["actuator", "health"]
+						},
+						"description": "Spring Boot Actuator 健康检查端点"
+					},
+					"response": []
+				},
+				{
+					"name": "获取系统配置",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/config",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "config"]
+						},
+						"description": "获取系统公开配置信息"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. 认证接口",
+			"item": [
+				{
+					"name": "用户注册",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\",\n  \"email\": \"test@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "注册新用户"
+					},
+					"response": []
+				},
+				{
+					"name": "用户登录 ⭐",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// 自动保存 Token 到环境变量",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.code === 200 && jsonData.data && jsonData.data.token) {",
+									"        pm.environment.set('jwt_token', jsonData.data.token);",
+									"        pm.environment.set('username', jsonData.data.username);",
+									"        console.log('✅ Token 已保存');",
+									"        console.log('✅ 用户名:', jsonData.data.username);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "用户登录\n\n**重要：** 登录成功后 Token 会自动保存到环境变量 `jwt_token`\n\n**默认账户：**\n- admin / 123456"
+					},
+					"response": []
+				},
+				{
+					"name": "获取用户信息",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/userinfo",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "userinfo"]
+						},
+						"description": "获取当前登录用户信息（需要认证）"
+					},
+					"response": []
+				},
+				{
+					"name": "用户登出",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						},
+						"description": "登出当前用户"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. 文件上传",
+			"item": [
+				{
+					"name": "上传文档到知识库",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "",
+									"description": "选择要上传的文件（PDF, TXT, DOC 等）"
+								},
+								{
+									"key": "kbId",
+									"value": "kb-001",
+									"type": "text",
+									"description": "知识库ID（可选，默认 kb-001）"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/file/upload",
+							"host": ["{{base_url}}"],
+							"path": ["api", "file", "upload"]
+						},
+						"description": "上传文档到 RAG 知识库\n\n**说明：**\n- tenantId 自动从 JWT Token 获取\n- 文件上传后会发送到 Kafka 进行异步处理\n- 返回 docId 用于追踪处理状态"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. RAG 搜索",
+			"item": [
+				{
+					"name": "向量搜索",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.requestId) {",
+									"        pm.environment.set('last_request_id', jsonData.data.requestId);",
+									"        console.log('✅ RequestId 已保存:', jsonData.data.requestId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"Spring WebFlux 是什么？\",\n  \"topK\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/rag/search",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "search"]
+						},
+						"description": "向量搜索文档\n\n**参数说明：**\n- `query`: 搜索查询（必填，最大2000字符）\n- `topK`: 返回结果数量（1-100，默认5）\n\n**注意：** tenantId/kbId 从 JWT 自动获取，无需传入\n\n**返回：** requestId 用于轮询结果"
+					},
+					"response": []
+				},
+				{
+					"name": "获取搜索结果",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/rag/result/{{last_request_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "result", "{{last_request_id}}"]
+						},
+						"description": "轮询获取搜索结果\n\n**说明：**\n- 如果结果未就绪，返回 404\n- RAG Worker 处理完成后可获取结果\n- 结果存储在 Redis，10分钟过期"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. RAG 答案生成",
+			"item": [
+				{
+					"name": "生成答案（新会话）",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// 生成新的 SessionId",
+									"const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);",
+									"pm.environment.set('current_session_id', sessionId);",
+									"console.log('🆕 新 SessionId:', sessionId);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data) {",
+									"        if (jsonData.data.requestId) {",
+									"            pm.environment.set('last_request_id', jsonData.data.requestId);",
+									"            console.log('✅ RequestId:', jsonData.data.requestId);",
+									"        }",
+									"        if (jsonData.data.sessionId) {",
+									"            pm.environment.set('current_session_id', jsonData.data.sessionId);",
+									"            console.log('✅ SessionId:', jsonData.data.sessionId);",
+									"        }",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"什么是 Spring WebFlux？请详细解释它的工作原理。\",\n  \"context\": [\n    {\n      \"text\": \"Spring WebFlux 是 Spring 5 引入的响应式 Web 框架。\",\n      \"source\": \"spring-docs\",\n      \"score\": 0.95\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/rag/answer",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "answer"]
+						},
+						"description": "生成 RAG 答案（创建新会话）\n\n**参数说明：**\n- `question`: 问题（必填，最大5000字符）\n- `context`: 上下文数组（必填，来自搜索结果）\n- `sessionId`: 会话ID（可选，不传则创建新会话）\n\n**注意：** tenantId 从 JWT 自动获取\n\n**返回：** requestId 和 sessionId"
+					},
+					"response": []
+				},
+				{
+					"name": "生成答案（继续对话）",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.requestId) {",
+									"        pm.environment.set('last_request_id', jsonData.data.requestId);",
+									"        console.log('✅ RequestId:', jsonData.data.requestId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"它和传统的 Spring MVC 有什么区别？\",\n  \"sessionId\": \"{{current_session_id}}\",\n  \"context\": [\n    {\n      \"text\": \"Spring MVC 基于 Servlet API，使用阻塞 I/O。\",\n      \"source\": \"spring-docs\",\n      \"score\": 0.90\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/rag/answer",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "answer"]
+						},
+						"description": "继续多轮对话\n\n**说明：**\n- 使用相同的 sessionId 保持对话上下文\n- 系统会自动加载历史对话（最近10条）\n- 可以使用代词引用之前的内容"
+					},
+					"response": []
+				},
+				{
+					"name": "获取答案结果",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/rag/result/{{last_request_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "result", "{{last_request_id}}"]
+						},
+						"description": "轮询获取答案结果\n\n**说明：**\n- RAG Worker 处理完成后返回答案\n- 结果存储在 Redis，10分钟过期\n- 404 表示结果未就绪"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. 搜索+答案组合",
+			"item": [
+				{
+					"name": "搜索并生成答案",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.search_request_id) {",
+									"        pm.environment.set('last_request_id', jsonData.data.search_request_id);",
+									"        console.log('✅ Search RequestId:', jsonData.data.search_request_id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"如何使用 Spring WebFlux 构建响应式应用？\",\n  \"topK\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/rag/search-and-answer",
+							"host": ["{{base_url}}"],
+							"path": ["api", "rag", "search-and-answer"]
+						},
+						"description": "组合接口：先搜索再生成答案\n\n**流程：**\n1. 发送搜索请求\n2. 获取 search_request_id\n3. 轮询搜索结果\n4. 使用搜索结果调用 /answer 接口"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. WebSocket 说明",
+			"item": [
+				{
+					"name": "WebSocket 连接信息",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:8080/ws/chat?sessionId={{current_session_id}}",
+							"protocol": "ws",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["ws", "chat"],
+							"query": [
+								{
+									"key": "sessionId",
+									"value": "{{current_session_id}}"
+								}
+							]
+						},
+						"description": "WebSocket 实时推送\n\n**连接地址：**\n```\nws://localhost:8080/ws/chat?sessionId={your-session-id}\n```\n\n**功能：**\n- 无需认证\n- RAG Worker 处理完成后自动推送结果\n- 比轮询更高效\n\n**测试工具：**\n- 浏览器扩展: Simple WebSocket Client\n- 命令行: wscat -c \"ws://localhost:8080/ws/chat?sessionId=xxx\"\n\n**注意：** Postman 不支持 WebSocket 测试，请使用其他工具"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// 全局预请求脚本",
+					"console.log('🚀 请求:', pm.info.requestName);"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// 全局测试脚本",
+					"console.log('📥 响应状态:', pm.response.code);",
+					"",
+					"// 检查通用错误",
+					"if (pm.response.code === 401) {",
+					"    console.log('⚠️ 认证失败，请先执行「登录」接口');",
+					"}",
+					"if (pm.response.code === 400) {",
+					"    console.log('⚠️ 请求参数错误，请检查请求体');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}

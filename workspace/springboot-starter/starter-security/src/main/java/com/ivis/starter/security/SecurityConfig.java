@@ -37,7 +37,9 @@ public class SecurityConfig {
             // 5. 認可ルール
             .authorizeExchange(exchanges -> exchanges
                 // 公開エンドポイント（ログイン、Swagger、設定など）
-                .pathMatchers("/api/auth/**", "/api/public/**", "/actuator/**").permitAll()
+                .pathMatchers("/api/auth/**", "/api/public/**", "/actuator/**", "/ws/**").permitAll()
+                // ファイルアップロードエンドポイント（multipart対応）
+                .pathMatchers("/api/file/upload").permitAll()
                 // その他のすべてのエンドポイントは認証が必要
                 .anyExchange().authenticated()
             )

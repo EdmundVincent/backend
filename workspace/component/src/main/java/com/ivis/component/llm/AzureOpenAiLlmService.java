@@ -21,10 +21,10 @@ public class AzureOpenAiLlmService implements LlmService {
     private final String apiVersion;
 
     public AzureOpenAiLlmService(
-            @Value("${azure.openai.endpoint:}") String endpoint,
-            @Value("${azure.openai.api-key:}") String apiKey,
-            @Value("${azure.openai.chat-deployment:gpt-4}") String deployment,
-            @Value("${azure.openai.api-version:2024-05-01-preview}") String apiVersion) {
+            @Value("${ai.openai.endpoint:}") String endpoint,
+            @Value("${ai.openai.api-key:}") String apiKey,
+            @Value("${ai.openai.deployment:gpt-4}") String deployment,
+            @Value("${ai.openai.api-version:2024-05-01-preview}") String apiVersion) {
         
         this.deployment = deployment;
         this.apiVersion = apiVersion;

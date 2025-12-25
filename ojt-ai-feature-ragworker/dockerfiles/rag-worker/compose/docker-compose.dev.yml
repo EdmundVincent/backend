@@ -1,6 +1,17 @@
+version: '3.8'
+
+# ========================================================
+# 统一 Docker Compose 配置
+# 基于 RAG Worker 配置，整合 Spring Boot API
+# ========================================================
+
 services:
+  # ========================================================
+  # 1. Redpanda (Kafka 兼容消息队列)
+  # ========================================================
   redpanda:
     image: redpandadata/redpanda:latest
+    container_name: ivis-redpanda
     command:
       - redpanda
       - start
@@ -34,8 +45,12 @@ services:
     networks:
       - ragnet
 
+  # ========================================================
+  # 2. PostgreSQL (关系型数据库)
+  # ========================================================
   postgres:
     image: postgres:16
+    container_name: ivis-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -51,9 +66,31 @@ services:
       retries: 5
     networks:
       - ragnet
+    restart: always
 
+  # ========================================================
+  # 3. Redis (缓存 - Spring Boot 使用)
+  # ========================================================
+  redis:
+    image: redis:latest
+    container_name: ivis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ragnet
+    restart: always
+
+  # ========================================================
+  # 4. MinIO (对象存储)
+  # ========================================================
+  # ========================================================
+  # 4. MinIO (对象存储)
+  # ========================================================
   minio:
     image: minio/minio:latest
+    container_name: ivis-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -70,9 +107,17 @@ services:
       retries: 5
     networks:
       - ragnet
+    restart: always
 
+  # ========================================================
+  # 5. Qdrant (向量数据库)
+  # ========================================================
+  # ========================================================
+  # 5. Qdrant (向量数据库)
+  # ========================================================
   qdrant:
     image: qdrant/qdrant:latest
+    container_name: ivis-qdrant
     volumes:
       - qdrant-data:/qdrant/storage
     ports:
@@ -84,19 +129,31 @@ services:
       retries: 5
     networks:
       - ragnet
+    restart: always
 
+  # ========================================================
+  # 6. 工具容器
+  # ========================================================
+  # ========================================================
+  # 6. 工具容器
+  # ========================================================
   mc:
     image: minio/mc
+    container_name: ivis-minio-client
     entrypoint: [ "/bin/sh", "-c", "sleep infinity" ]
     networks:
       - ragnet
 
   kafka-tools:
     image: edenhill/kcat:1.7.1
+    container_name: ivis-kafka-tools
     entrypoint: [ "/bin/sh", "-c", "tail -f /dev/null" ]
     networks:
       - ragnet
 
+  # ========================================================
+  # 7. 初始化服务
+  # ========================================================
   postgres-init:
     image: postgres:16
     entrypoint: [ "/bin/sh", "-c", "psql -h postgres -U rag_user -d rag_db -v ON_ERROR_STOP=1 -f /init_db.sql" ]
@@ -140,20 +197,26 @@ services:
       - ragnet
     restart: "no"
 
-  rag-worker-dev:
+  # ========================================================
+  # 8. C++ RAG Worker (核心检索引擎)
+  # ========================================================
+  rag-worker:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.dev
+      context: ../../..
+      dockerfile: dockerfiles/rag-worker/docker/Dockerfile.dev
+    container_name: ivis-rag-worker
     working_dir: /app
     env_file:
       - ./.env
-    command: [ "/bin/bash", "-c", "tail -f /dev/null" ]
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP}
       KAFKA_GROUP: ${KAFKA_GROUP}
       KAFKA_TOPIC_INGEST: ${KAFKA_TOPIC_INGEST}
-      KAFKA_TOPIC_INDEXED: ${KAFKA_TOPIC_INDEXED}
-      KAFKA_TOPIC_FAILED: ${KAFKA_TOPIC_FAILED}
+      KAFKA_TOPIC_SEARCH_REQUEST: rag_search_request
+      KAFKA_TOPIC_SEARCH_RESULT: rag_search_result
+      KAFKA_TOPIC_ANSWER_REQUEST: rag_answer_request
+      KAFKA_TOPIC_ANSWER_RESULT: rag_answer_result
+      KAFKA_TOPIC_FAILED: rag_failed
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       MINIO_BUCKET: ${MINIO_BUCKET}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
@@ -161,9 +224,13 @@ services:
       POSTGRES_CONN: ${POSTGRES_CONN}
       QDRANT_ENDPOINT: ${QDRANT_ENDPOINT}
       EMBEDDER_PROVIDER: ${EMBEDDER_PROVIDER}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}
+      AZURE_OPENAI_CHAT_DEPLOYMENT: ${AZURE_OPENAI_CHAT_DEPLOYMENT}
+      AZURE_OPENAI_CHAT_ENDPOINT: ${AZURE_OPENAI_CHAT_ENDPOINT}
       DEMO_MODE: ${DEMO_MODE}
-    volumes:
-      - ../../../workspace/rag-worker:/app
     depends_on:
       redpanda:
         condition: service_healthy
@@ -181,13 +248,70 @@ services:
         condition: service_completed_successfully
     networks:
       - ragnet
+    restart: always
+    command: [ "/bin/bash", "-c", "rag-worker-dev --kafka-worker" ]
 
+  # ========================================================
+  # 9. Spring Boot API (后端服务)
+  # ========================================================
+  rag-api:
+    build:
+      context: ../../../../
+      dockerfile: dockerfile-springboot/Dockerfile
+    container_name: ivis-rag-api
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      AI_OPENAI_ENDPOINT: ${AI_OPENAI_ENDPOINT}
+      AI_OPENAI_API_KEY: ${AI_OPENAI_API_KEY}
+      AI_OPENAI_DEPLOYMENT: ${AI_OPENAI_DEPLOYMENT}
+      AI_OPENAI_API_VERSION: ${AI_OPENAI_API_VERSION}
+    volumes:
+      - ../../../../workspace:/home/vscode/workspace:rw
+    depends_on:
+      redis:
+        condition: service_started
+      redpanda:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - ragnet
+    restart: always
+    command: sh -c "mvn clean install -DskipTests && mvn spring-boot:run -pl ojt-ai-boot"
+
+# ========================================================
+# 网络配置
+# ========================================================
+# ========================================================
+# 网络配置
+# ========================================================
 networks:
   ragnet:
     driver: bridge
 
+# ========================================================
+# 数据卷
+# ========================================================
 volumes:
   redpanda-data:
+  redis-data:
   postgres-data:
   minio-data:
   qdrant-data:

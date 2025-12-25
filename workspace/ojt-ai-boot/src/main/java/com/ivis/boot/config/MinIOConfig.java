@@ -11,9 +11,9 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class MinIOConfig {
 
-    private String endpoint = "http://minio:9000";
-    private String accessKey = "minio";
-    private String secretKey = "minio123";
+    private String endpoint;
+    private String accessKey;
+    private String secretKey;
     private String bucket = "rag-docs";
 
     @Bean

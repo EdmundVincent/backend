@@ -25,6 +25,8 @@
         <langchain4j.version>0.29.1</langchain4j.version>
         <pgvector.version>0.1.4</pgvector.version>
         <okhttp.version>4.12.0</okhttp.version>
+        <azure-ai-openai.version>1.0.0-beta.13</azure-ai-openai.version>
+        <azure-identity.version>1.13.3</azure-identity.version>
     </properties>
 
     <dependencyManagement>
@@ -101,6 +103,16 @@
                 <groupId>com.pgvector</groupId>
                 <artifactId>pgvector</artifactId>
                 <version>${pgvector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-ai-openai</artifactId>
+                <version>${azure-ai-openai.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${azure-identity.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

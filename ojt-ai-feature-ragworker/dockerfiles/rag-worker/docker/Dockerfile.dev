@@ -21,7 +21,9 @@ RUN curl -sL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bi
 
 # Copy and run the SDK installation script
 COPY dockerfiles/rag-worker/docker/install_cpp_sdks.sh /usr/local/bin/install_cpp_sdks.sh
-RUN chmod +x /usr/local/bin/install_cpp_sdks.sh && /usr/local/bin/install_cpp_sdks.sh
+RUN sed -i 's/\r$//' /usr/local/bin/install_cpp_sdks.sh && \
+    chmod +x /usr/local/bin/install_cpp_sdks.sh && \
+    bash /usr/local/bin/install_cpp_sdks.sh
 
 # Copy source and build rag-worker
 COPY workspace/rag-worker/rag-worker /app/rag-worker
@@ -29,7 +31,11 @@ WORKDIR /app/rag-worker
 
 # Robust out-of-source build to avoid in-source CMake cache issues
 RUN rm -rf build && \
-    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake -S . -B build \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake \
+      -DVCPKG_TARGET_TRIPLET=x64-linux \
+    && \
     cmake --build build -j$(nproc) && \
     ls -lh build/rag-worker-dev && \
     install -Dm755 build/rag-worker-dev /usr/local/bin/rag-worker-dev && \

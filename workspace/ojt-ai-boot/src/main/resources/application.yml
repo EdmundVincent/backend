@@ -1,11 +1,19 @@
 server:
   port: 8080
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
 
 spring:
   application:
     name: ojt-ai-backend
   main:
     web-application-type: reactive
+  webflux:
+    multipart:
+      max-in-memory-size: 10485760  # 10MB
+      max-disk-usage-per-part: 104857600  # 100MB
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:redis}
@@ -31,18 +39,26 @@ spring:
       acks: all
       retries: 3
 
+# Azure OpenAI / DeepSeek 配置（使用 OpenAI SDK）
+ai:
+  openai:
+    endpoint: ${AI_OPENAI_ENDPOINT:https://deepseek-ivis-rag.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview}
+    api-key: ${AI_OPENAI_API_KEY:}
+    deployment: ${AI_OPENAI_DEPLOYMENT:DeepSeek-V3.2}
+    api-version: ${AI_OPENAI_API_VERSION:2024-05-01-preview}
+
 # MinIO 配置
 minio:
   endpoint: ${MINIO_ENDPOINT:http://minio:9000}
-  access-key: ${MINIO_ACCESS_KEY:minio}
-  secret-key: ${MINIO_SECRET_KEY:minio123}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
   bucket: ${MINIO_BUCKET:rag-docs}
 
 # JWT 設定
 jwt:
-  # 署名用の秘密鍵（本番環境では環境変数で管理すること）
+  # 署名用の秘密鍵（環境変数で管理すること）
   # 最低32文字以上必要（HS256）
-  secret: ivis-chatbot-secure-secret-key-for-jwt-token-signing-do-not-commit-to-git
+  secret: ${JWT_SECRET:}
   # トークン有効期限（ミリ秒）デフォルト24時間
   expiration: 86400000
 
@@ -50,3 +66,13 @@ logging:
   level:
     root: INFO
     com.ivis: DEBUG
+
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized

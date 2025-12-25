@@ -1,0 +1,1 @@
+{"answer":"Spring WebFlux 是 Spring 5 引入的响应式编程框架，基于 Reactor 项目构建。\n\n主要特性：\n1. 非阻塞式：使用少量线程处理大量并发请求\n2. 背压支持：通过 Reactive Streams 规范实现流量控制\n3. 函数式编程：支持函数式路由和处理器\n4. 性能优越：在高并发场景下表现出色\n5. 完全异步：从请求到响应全程异步处理\n\n适用场景：\n- 高并发微服务\n- 实时数据流处理\n- IoT 应用\n- 需要处理大量长连接的系统","sources":[{"title":"Spring WebFlux 官方文档","score":0.95}],"metadata":{"processingTime":1250,"model":"gpt-4"}}
